@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_plugin_template).
+-module(emq_plugin_msg2mysql).
 
 -include_lib("emqttd/include/emqttd.hrl").
 
