@@ -86,13 +86,13 @@ on_message_publish(Message, _Env) ->
     {ok, Message}.
 
 on_message_delivered(ClientId, Username, Message, _Env) ->
-    mysql:fetch(mqtt,io:format("insert into tb_msg(clientid,content,addtime,type) value(~s,~s,~s) ",[ClientId, emqttd_message:format(Message),get_timestamp(),'1'])),
+    mysql:fetch(mqtt,io:format("insert into tb_msg(clientid,content,addtime,type) value(~s,~s,~s,~s) ",[ClientId, emqttd_message:format(Message),get_timestamp(),'1'])),
     io:format("delivered to client(~s/~s): ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
     {ok, Message}.
 
 on_message_acked(ClientId, Username, Message, _Env) ->
     io:format("client(~s/~s) acked: ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
-    mysql:fetch(mqtt,io:format("insert into tb_msg(clientid,content,addtime,type) value(~s,~s,~s) ",[ClientId, emqttd_message:format(Message),get_timestamp(),'2'])),
+    mysql:fetch(mqtt,io:format("insert into tb_msg(clientid,content,addtime,type) value(~s,~s,~s,~s) ",[ClientId, emqttd_message:format(Message),get_timestamp(),'2'])),
 
     {ok, Message}.
 
@@ -114,11 +114,11 @@ get_timestamp() ->
     {M, S, _} = os:timestamp(),
     M * 1000000 + S.
 
-get_date_str(date_str) ->
+get_date_str() ->
     {{Year, Month, Day}, {Hour, Minite, Second}} = calendar:local_time(),
-    date_str = io:format("~s~s~s",Year,Month,Day).
+    date_str = io:format("~s~s~s",[Year,Month,Day]).
 
-init_mysql(mqtt,date_str) ->
+init_mysql() ->
     mysql:start_link(mqtt, "localhost", "root", "jiaziit2017", "db_mqtt"),
     mysql:connect(mqtt, "localhost", undefined, "root", "jiaziit2017", "db_mqtt", false),
     date_str = get_date_str(),
