@@ -46,8 +46,8 @@ load(Env) ->
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
-    mysql:start_link("mqtt", "localhost", "root", "jiaziit2017", "db_mqtt"),
-    mysql:connect("mqtt", "localhost", undefined, "root", "jiaziit2017", "db_mqtt", false),
+    mysql:start_link(mqtt, "localhost", "root", "jiaziit2017", "db_mqtt"),
+    mysql:connect(mqtt, "localhost", undefined, "root", "jiaziit2017", "db_mqtt", false),
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
@@ -56,7 +56,7 @@ on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _En
 
 on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
     io:format("client(~s/~s) will subscribe: ~p~n", [Username, ClientId, TopicTable]),
-    mysql:fetch("mqtt",<<"insert into tb_topic('client_id','subscribe_time','username','topic') value(~s,~s,~s,~s) ",[ClientId,get_timestamp(),Username,TopicTable]>>),
+    mysql:fetch(mqtt,io:format("insert into tb_topic(client_id,subscribe_time,username,topic) value(~s,~s,~s,~s) ",[ClientId,get_timestamp(),Username,TopicTable])),
     {ok, TopicTable}.
     
 on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
@@ -86,12 +86,14 @@ on_message_publish(Message, _Env) ->
     {ok, Message}.
 
 on_message_delivered(ClientId, Username, Message, _Env) ->
-    mysql:fetch("mqtt",<<"insert into tb_msg('clientid','content','addtime') value(~s,~s,~s) ",[ClientId, emqttd_message:format(Message),get_timestamp()]>>),
+    mysql:fetch(mqtt,io:format("insert into tb_msg(clientid,content,addtime,type) value(~s,~s,~s) ",[ClientId, emqttd_message:format(Message),get_timestamp(),'1'])),
     io:format("delivered to client(~s/~s): ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
     {ok, Message}.
 
 on_message_acked(ClientId, Username, Message, _Env) ->
     io:format("client(~s/~s) acked: ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
+    mysql:fetch(mqtt,io:format("insert into tb_msg(clientid,content,addtime,type) value(~s,~s,~s) ",[ClientId, emqttd_message:format(Message),get_timestamp(),'2'])),
+
     {ok, Message}.
 
 %% Called when the plugin application stop
@@ -107,7 +109,21 @@ unload() ->
     emqttd:unhook('message.publish', fun ?MODULE:on_message_publish/2),
     emqttd:unhook('message.delivered', fun ?MODULE:on_message_delivered/4),
     emqttd:unhook('message.acked', fun ?MODULE:on_message_acked/4).
+
 get_timestamp() ->
     {M, S, _} = os:timestamp(),
     M * 1000000 + S.
 
+get_date_str(date_str) ->
+    {{Year, Month, Day}, {Hour, Minite, Second}} = calendar:local_time(),
+    date_str = io:format("~s~s~s",Year,Month,Day).
+
+init_mysql(mqtt,date_str) ->
+    mysql:start_link(mqtt, "localhost", "root", "jiaziit2017", "db_mqtt"),
+    mysql:connect(mqtt, "localhost", undefined, "root", "jiaziit2017", "db_mqtt", false),
+    date_str = get_date_str(),
+    {ok, mqtt,date_str}.
+
+
+
+    
